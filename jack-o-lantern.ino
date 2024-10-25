@@ -5,8 +5,6 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION "0.1"
-
 #define PIN        6
 #define NUM_PIXELS 12
 
@@ -121,8 +119,10 @@ void setup() {
   clock_prescale_set(clock_div_1);
 #endif
 
+#ifdef DEBUG
   Serial.begin(9600);
-  Serial.println("Jack-o-lantern version " VERSION);
+  Serial.println("Jack-o-lantern boot");
+#endif
 
   gPixels.begin();
   gPixels.clear();
