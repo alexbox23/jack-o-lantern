@@ -5,11 +5,14 @@
   #include <avr/power.h>
 #endif
 
-#define PIN        6
-#define NUM_PIXELS 12
-
 #define FRAME_MS 33 // 30 fps
 
+#define PIN_RGB    6
+#define NUM_PIXELS 12
+
+#define PIN_PIR    2
+
+#define WAKE_DURATION_MS  300000 // 5 minutes
 #define HYPER_DURATION_MS 5000
 
 #define FLICKER_KHZ_IDLE (1.0 / 500.0) // once every 500 ms
@@ -18,15 +21,20 @@
 #define NUM_HEAT_LEVELS 8
 
 // Blue flame
-bool gHyper = false;
+enum : int {
+  kStateSleep = 0,
+  kStateIdle,
+  kStateHyper
+} gState = kStateIdle;
 
 // Position and velocity of fireball
 int gPos = 0;
 int gVel = 0;
 
 // Time in ms after boot for animation changes
-uint32_t gNextTurnTime = 0;
+uint32_t gSleepTime = 0;
 uint32_t gHyperEndTime = 0;
+uint32_t gNextTurnTime = 0;
 
 // Table of how recent the fireball was in each position
 int gHeatMap[NUM_PIXELS] = {};
@@ -53,7 +61,7 @@ uint32_t gColorTableHyper[NUM_HEAT_LEVELS] = {
   0x2a0088,
 };
 
-Adafruit_NeoPixel gPixels(NUM_PIXELS, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel gPixels(NUM_PIXELS, PIN_RGB, NEO_GRB + NEO_KHZ800);
 
 // Get the time interval for the next random event given an average rate
 double get_poisson_interval(double rate) {
@@ -70,7 +78,7 @@ void set_spark() {
 
 void render_flame() {
   // TODO: add noise
-  uint32_t * color_table = gHyper ? gColorTableHyper : gColorTableIdle;
+  uint32_t * color_table = (gState == kStateHyper) ? gColorTableHyper : gColorTableIdle;
 
   for (int i = 0; i < NUM_PIXELS; i++) {
     gPixels.setPixelColor(i, color_table[gHeatMap[i]]);
@@ -80,11 +88,14 @@ void render_flame() {
 }
 
 void check_hyper() {
-  bool detected = false;
+  int detected = digitalRead(PIN_PIR) == HIGH;
 
-  if (detected && !gHyper) {
-    gHyper = true;
-    gHyperEndTime = millis() + HYPER_DURATION_MS;
+  if (detected && gState != kStateHyper) {
+    gState = kStateHyper;
+
+    uint32_t now = millis();
+    gHyperEndTime = now + HYPER_DURATION_MS;
+    gSleepTime = now + WAKE_DURATION_MS;
 
     set_spark();
   }
@@ -106,11 +117,14 @@ void update_fireball(uint32_t time) {
   if (time > gNextTurnTime) {
     gVel = (gVel == 0) ? 1 : -gVel;
     gNextTurnTime = time + get_poisson_interval(
-      gHyper ? FLICKER_KHZ_HYPER : FLICKER_KHZ_IDLE);
+      gState == kStateHyper ? FLICKER_KHZ_HYPER : FLICKER_KHZ_IDLE);
   }
 
-  if (time > gHyperEndTime) {
-    gHyper = false;
+  if (gState == kStateHyper && time > gHyperEndTime) {
+    gState = kStateIdle;
+  }
+  if (gState != kStateSleep && time > gSleepTime) {
+    gState = kStateSleep;
   }
 }
 
@@ -127,6 +141,7 @@ void setup() {
   gPixels.begin();
   gPixels.clear();
 
+  gSleepTime = WAKE_DURATION_MS;
   set_spark();
 }
 
@@ -135,9 +150,14 @@ void loop() {
 
   check_hyper();
 
-  render_flame();
-
-  update_fireball(start);
+  if (gState == kStateSleep) {
+    gPixels.clear();
+    gPixels.show();
+  }
+  else {
+    render_flame();
+    update_fireball(start);
+  }
   
   uint32_t d = millis() - start;
   if (d < FRAME_MS)

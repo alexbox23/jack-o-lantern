@@ -2,5 +2,4 @@
 A quick Arduino program, NeoPixel ring and PIR sensor
 
 ## TODO
-* PIR sensor
 * multiple fireballs
