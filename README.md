@@ -1,5 +1,12 @@
 # jack-o-lantern
-A quick Arduino program, NeoPixel ring and PIR sensor
+LED Candle Animation
 
-## TODO
-* multiple fireballs
+## Components
+* Arduino Uno
+* NeoPixel ring
+* PIR motion sensor
+* USB power bank
+
+## Features
+* Sleep mode
+* Glows blue when presence is detected

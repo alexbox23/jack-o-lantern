@@ -20,7 +20,31 @@
 
 #define NUM_HEAT_LEVELS 8
 
+#define COLOR_SLEEP 0x7f0000
+
+const uint32_t gColorTableIdle[NUM_HEAT_LEVELS] = {
+  0xffe000,
+  0xff8000,
+  0xff6000,
+  0xff4000,
+  0xff3000,
+  0xff2000,
+  0xff1000,
+  0xff0000,
+};
+
 // Blue flame
+const uint32_t gColorTableHyper[NUM_HEAT_LEVELS] = {
+  0x05a1a7,
+  0x35e6ea,
+  0xebf4f4,
+  0x8df6f7,
+  0x00885e,
+  0x005e88,
+  0x001a88,
+  0x2a0088,
+};
+
 enum : int {
   kStateSleep = 0,
   kStateIdle,
@@ -39,28 +63,6 @@ uint32_t gNextTurnTime = 0;
 // Table of how recent the fireball was in each position
 int gHeatMap[NUM_PIXELS] = {};
 
-uint32_t gColorTableIdle[NUM_HEAT_LEVELS] = {
-  0xffe000,
-  0xff8000,
-  0xff6000,
-  0xff4000,
-  0xff3000,
-  0xff2000,
-  0xff1000,
-  0xff0000,
-};
-
-uint32_t gColorTableHyper[NUM_HEAT_LEVELS] = {
-  0x05a1a7,
-  0x35e6ea,
-  0xebf4f4,
-  0x8df6f7,
-  0x00885e,
-  0x005e88,
-  0x001a88,
-  0x2a0088,
-};
-
 Adafruit_NeoPixel gPixels(NUM_PIXELS, PIN_RGB, NEO_GRB + NEO_KHZ800);
 
 // Get the time interval for the next random event given an average rate
@@ -68,26 +70,64 @@ double get_poisson_interval(double rate) {
   return -log(1.0 - (double)random(100) / 100.0) / rate;
 }
 
+uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
+  const uint32_t t = val < min ? min : val;
+  return t > max ? max : t;
+}
+
+uint32_t color_add_noise(uint32_t color)
+{
+  const double mag = 0x04;
+
+  double r_d = random(-0x40, 0x40);
+  double g_d = random(-0x40, 0x40);
+  double b_d = random(-0x40, 0x40);
+
+  double norm = sqrt(r_d * r_d + g_d * g_d + b_d * b_d);
+
+  r_d *= mag / norm;
+  g_d *= mag / norm;
+  b_d *= mag / norm;
+
+  uint32_t r = (color & 0xff0000) >> 16;
+  uint32_t g = (color & 0xff00) >> 8;
+  uint32_t b = color & 0xff;
+
+  return Adafruit_NeoPixel::Color(
+    clamp(r + r_d, 0, 0xff),
+    clamp(g + g_d, 0, 0xff),
+    clamp(b + b_d, 0, 0xff));
+}
+
 void set_spark() {
-    gVel = 0;
-    gNextTurnTime = 0;
-    for (int i = 0; i < NUM_PIXELS; i++) {
-      gHeatMap[i] = NUM_HEAT_LEVELS - 1;
-    }
+  gVel = 0;
+  gNextTurnTime = 0;
+  for (int i = 0; i < NUM_PIXELS; i++) {
+    gHeatMap[i] = NUM_HEAT_LEVELS - 1;
+  }
+}
+
+void set_sleep() {
+  gPixels.clear();
+
+  // Maintain min current to avoid power bank sleep
+  gPixels.setPixelColor(gPos, COLOR_SLEEP);
+  gPixels.show();
 }
 
 void render_flame() {
-  // TODO: add noise
-  uint32_t * color_table = (gState == kStateHyper) ? gColorTableHyper : gColorTableIdle;
+  uint32_t * color_table = (gState == kStateHyper) ?
+    gColorTableHyper : gColorTableIdle;
 
   for (int i = 0; i < NUM_PIXELS; i++) {
-    gPixels.setPixelColor(i, color_table[gHeatMap[i]]);
+    gPixels.setPixelColor(i,
+      color_add_noise(color_table[gHeatMap[i]]));
   }
 
   gPixels.show();
 }
 
-void check_hyper() {
+void check_presence() {
   int detected = digitalRead(PIN_PIR) == HIGH;
 
   if (detected && gState != kStateHyper) {
@@ -148,17 +188,16 @@ void setup() {
 void loop() {
   uint32_t start = millis();
 
-  check_hyper();
+  check_presence();
 
   if (gState == kStateSleep) {
-    gPixels.clear();
-    gPixels.show();
+    set_sleep();
   }
   else {
     render_flame();
     update_fireball(start);
   }
-  
+
   uint32_t d = millis() - start;
   if (d < FRAME_MS)
     delay(FRAME_MS - d); 
