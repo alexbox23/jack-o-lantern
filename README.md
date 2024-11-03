@@ -1,5 +1,5 @@
-# Bare metal LEDs
-LED projects powered by bare metal MCUs
+# LED loops
+LED projects powered by Arduino
 
 ## jack-o-lantern.ino
 LED Candle Animation

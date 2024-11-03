@@ -13,7 +13,7 @@
 #define NUM_PIXELS 12
 #define HUE_CYCLE_MS 0x1000 // Must be less than 0x10000
 
-#define WAKE_DURATION_MS  300000 // 5 minutes
+#define WAKE_DURATION_MS  30000 // 30 seconds
 
 // Time in ms after boot
 uint32_t gSleepTime = 0;
@@ -25,8 +25,7 @@ void check_presence() {
 
   int detected = digitalRead(PIN_PIR) == HIGH;
 
-  // Detected and asleep
-  if (detected && now > gSleepTime) {
+  if (detected) {
     gSleepTime = now + WAKE_DURATION_MS;
   }
 }
@@ -48,7 +47,7 @@ void loop() {
   check_presence();
 
   if (start < gSleepTime) { // Awake
-    gPixels.rainbow((start % HUE_CYCLE_MS) * (0x10000 / HUE_CYCLE_MS));
+    gPixels.rainbow((start % HUE_CYCLE_MS) * (0x10000 / HUE_CYCLE_MS), 1, 0xff, 0x80);
   }
   else { // Asleep
     gPixels.clear();

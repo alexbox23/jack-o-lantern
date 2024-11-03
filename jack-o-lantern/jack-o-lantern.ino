@@ -12,7 +12,7 @@
 
 #define PIN_PIR    2
 
-#define WAKE_DURATION_MS  300000 // 5 minutes
+#define WAKE_DURATION_MS  180000 // 3 minutes
 #define HYPER_DURATION_MS 5000
 
 #define FLICKER_KHZ_IDLE (1.0 / 500.0) // once every 500 ms
@@ -111,7 +111,8 @@ void set_sleep() {
   gPixels.clear();
 
   // Maintain min current to avoid power bank sleep
-  gPixels.setPixelColor(gPos, COLOR_SLEEP);
+  for (int i = 0; i < NUM_PIXELS; i++)
+    gPixels.setPixelColor(i, COLOR_SLEEP);
   gPixels.show();
 }
 
@@ -130,7 +131,7 @@ void render_flame() {
 void check_presence() {
   int detected = digitalRead(PIN_PIR) == HIGH;
 
-  if (detected && gState != kStateHyper) {
+  if (detected) {
     gState = kStateHyper;
 
     uint32_t now = millis();
