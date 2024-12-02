@@ -1,6 +1,18 @@
 # LED loops
 LED projects powered by Arduino
 
+## basic-path-light.ino
+Rainbow light with presence detection
+
+### Components
+* Adafruit Gemma
+* NeoPixel ring
+* PIR motion sensor
+* 3.7V LiPo battery
+
+<img src="basic-path-light/demo.gif" width="25%" height="25%"/>
+STL in folder
+
 ## jack-o-lantern.ino
 LED Candle Animation
 
@@ -11,15 +23,9 @@ LED Candle Animation
 * 5V USB power bank
 
 ### Features
-* Sleep mode
+* Red flame pattern
+* Sleep mode idle pattern
 * Glows blue when presence is detected
 
-## basic-path-light.ino
-Rainbow light with presence detection
-
-### Components
-* Adafruit Gemma
-* NeoPixel ring
-* PIR motion sensor
-* 3.7V LiPo battery
-
+<img src="jack-o-lantern/demo.gif" width="25%" height="25%"/>
+STL: https://www.thingiverse.com/thing:488574 (printed 2x size)
